@@ -1,10 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import API_URL from './api';
 import './App.css';
 
-const API_BASE = '/api/users';
-const ROLES = ['Admin', 'Editor', 'Member', 'Viewer'];
-
-const emptyForm = { id: null, name: '', email: '', role: 'Member' };
+const emptyForm = { id: null, name: '', email: '', department: '' };
 
 function initials(name) {
   return name
@@ -15,7 +13,6 @@ function initials(name) {
     .join('');
 }
 
-// Deterministic accent color per user, derived from their name.
 function accentFor(name) {
   const palette = ['#2F6F5E', '#B5562F', '#3B5BA5', '#8A5FB0', '#C08A1E'];
   let hash = 0;
@@ -24,7 +21,7 @@ function accentFor(name) {
 }
 
 export default function App() {
-  const [users, setUsers] = useState([]);
+  const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [form, setForm] = useState(emptyForm);
@@ -34,19 +31,19 @@ export default function App() {
   const isEditing = form.id !== null;
 
   useEffect(() => {
-    loadUsers();
+    loadEmployees();
   }, []);
 
-  async function loadUsers() {
+  async function loadEmployees() {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(API_BASE);
-      if (!res.ok) throw new Error('Could not load the directory');
+      const res = await fetch(`${API_URL}/employees`);
+      if (!res.ok) throw new Error('Could not load employees');
       const data = await res.json();
-      setUsers(data);
+      setEmployees(data);
     } catch (err) {
-      setError(err.message || 'Something went wrong while loading users');
+      setError(err.message || 'Something went wrong while loading employees');
     } finally {
       setLoading(false);
     }
@@ -54,15 +51,20 @@ export default function App() {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!form.name.trim() || !form.email.trim()) {
-      setError('Name and email are required');
+    if (!form.name.trim() || !form.email.trim() || !form.department.trim()) {
+      setError('Name, email, and department are all required');
       return;
     }
+
     setSaving(true);
     setError('');
     try {
-      const payload = { name: form.name.trim(), email: form.email.trim(), role: form.role };
-      const res = await fetch(isEditing ? `${API_BASE}/${form.id}` : API_BASE, {
+      const payload = {
+        name: form.name.trim(),
+        email: form.email.trim(),
+        department: form.department.trim(),
+      };
+      const res = await fetch(isEditing ? `${API_URL}/employees/${form.id}` : `${API_URL}/employees`, {
         method: isEditing ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -71,9 +73,9 @@ export default function App() {
       if (!res.ok) throw new Error(data.error || 'Save failed');
 
       if (isEditing) {
-        setUsers((prev) => prev.map((u) => (u.id === data.id ? data : u)));
+        setEmployees((prev) => prev.map((emp) => (emp.id === data.id ? data : emp)));
       } else {
-        setUsers((prev) => [...prev, data]);
+        setEmployees((prev) => [...prev, data]);
       }
       setForm(emptyForm);
     } catch (err) {
@@ -83,8 +85,13 @@ export default function App() {
     }
   }
 
-  function startEdit(user) {
-    setForm({ id: user.id, name: user.name, email: user.email, role: user.role });
+  function startEdit(employee) {
+    setForm({
+      id: employee.id,
+      name: employee.name,
+      email: employee.email,
+      department: employee.department,
+    });
     setError('');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -95,11 +102,11 @@ export default function App() {
   }
 
   async function handleDelete(id) {
-    if (!confirm('Remove this person from the directory?')) return;
+    if (!confirm('Remove this employee?')) return;
     try {
-      const res = await fetch(`${API_BASE}/${id}`, { method: 'DELETE' });
+      const res = await fetch(`${API_URL}/employees/${id}`, { method: 'DELETE' });
       if (!res.ok && res.status !== 204) throw new Error('Delete failed');
-      setUsers((prev) => prev.filter((u) => u.id !== id));
+      setEmployees((prev) => prev.filter((emp) => emp.id !== id));
       if (form.id === id) setForm(emptyForm);
     } catch (err) {
       setError(err.message || 'Something went wrong while deleting');
@@ -108,30 +115,30 @@ export default function App() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return users;
-    return users.filter(
-      (u) =>
-        u.name.toLowerCase().includes(q) ||
-        u.email.toLowerCase().includes(q) ||
-        u.role.toLowerCase().includes(q)
+    if (!q) return employees;
+    return employees.filter(
+      (emp) =>
+        emp.name.toLowerCase().includes(q) ||
+        emp.email.toLowerCase().includes(q) ||
+        emp.department.toLowerCase().includes(q)
     );
-  }, [users, query]);
+  }, [employees, query]);
 
   return (
     <div className="page">
       <header className="hero">
-        <span className="eyebrow">Directory · Tier 1 of 3, React client</span>
-        <h1>Team Directory</h1>
+        <span className="eyebrow">Employee Management Demo</span>
+        <h1>Employees</h1>
         <p className="hero-sub">
-          A minimal three-tier reference app: this page talks to an Express API, which reads
-          and writes a PostgreSQL <code>users</code> table.
+          React client → Express API → PostgreSQL. A small reference app for learning
+          Docker, AWS, load balancing, and blue-green deployment.
         </p>
       </header>
 
       <main className="layout">
         <section className="panel form-panel">
-          <h2>{isEditing ? `Edit entry No. ${String(form.id).padStart(3, '0')}` : 'Add a person'}</h2>
-          <form onSubmit={handleSubmit} className="user-form">
+          <h2>{isEditing ? `Edit employee #${form.id}` : 'Add an employee'}</h2>
+          <form onSubmit={handleSubmit} className="employee-form">
             <label>
               Name
               <input
@@ -153,19 +160,19 @@ export default function App() {
               />
             </label>
             <label>
-              Role
-              <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
-                {ROLES.map((r) => (
-                  <option key={r} value={r}>
-                    {r}
-                  </option>
-                ))}
-              </select>
+              Department
+              <input
+                type="text"
+                value={form.department}
+                onChange={(e) => setForm({ ...form, department: e.target.value })}
+                placeholder="Engineering"
+                autoComplete="off"
+              />
             </label>
 
             <div className="form-actions">
               <button type="submit" className="btn-primary" disabled={saving}>
-                {saving ? 'Saving…' : isEditing ? 'Save changes' : 'Add to directory'}
+                {saving ? 'Saving…' : isEditing ? 'Save changes' : 'Add employee'}
               </button>
               {isEditing && (
                 <button type="button" className="btn-ghost" onClick={cancelEdit}>
@@ -180,41 +187,40 @@ export default function App() {
         <section className="panel list-panel">
           <div className="list-header">
             <h2>
-              {filtered.length} {filtered.length === 1 ? 'person' : 'people'}
+              {filtered.length} {filtered.length === 1 ? 'employee' : 'employees'}
             </h2>
             <input
               type="search"
               className="search"
-              placeholder="Search by name, email, or role"
+              placeholder="Search by name, email, or department"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
           </div>
 
           {loading ? (
-            <p className="empty-state">Loading the directory…</p>
+            <p className="status-message">Loading employees…</p>
           ) : filtered.length === 0 ? (
-            <p className="empty-state">
-              {users.length === 0
-                ? 'Nobody here yet — add the first person using the form.'
+            <p className="status-message">
+              {employees.length === 0
+                ? 'No employees yet — add the first one using the form.'
                 : 'No matches. Try a different search term.'}
             </p>
           ) : (
-            <ul className="user-list">
-              {filtered.map((u) => (
-                <li className="user-row" key={u.id} style={{ '--accent': accentFor(u.name) }}>
-                  <span className="index">No. {String(u.id).padStart(3, '0')}</span>
-                  <span className="avatar">{initials(u.name)}</span>
-                  <div className="user-info">
-                    <span className="user-name">{u.name}</span>
-                    <span className="user-email">{u.email}</span>
+            <ul className="employee-list">
+              {filtered.map((emp) => (
+                <li className="employee-row" key={emp.id} style={{ '--accent': accentFor(emp.name) }}>
+                  <span className="avatar">{initials(emp.name)}</span>
+                  <div className="employee-info">
+                    <span className="employee-name">{emp.name}</span>
+                    <span className="employee-email">{emp.email}</span>
                   </div>
-                  <span className="role-badge">{u.role}</span>
+                  <span className="department-badge">{emp.department}</span>
                   <div className="row-actions">
-                    <button className="btn-ghost small" onClick={() => startEdit(u)}>
+                    <button className="btn-ghost small" onClick={() => startEdit(emp)}>
                       Edit
                     </button>
-                    <button className="btn-danger small" onClick={() => handleDelete(u.id)}>
+                    <button className="btn-danger small" onClick={() => handleDelete(emp.id)}>
                       Delete
                     </button>
                   </div>
@@ -225,9 +231,7 @@ export default function App() {
         </section>
       </main>
 
-      <footer className="foot">
-        React (client) → Express (server) → PostgreSQL (database)
-      </footer>
+      <footer className="foot">React → Express → PostgreSQL</footer>
     </div>
   );
 }

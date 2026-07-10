@@ -1,17 +1,19 @@
--- Run this once against your Postgres database to set up the schema.
--- Example: psql -U postgres -d threetierapp -f schema.sql
+-- Runs automatically when the postgres container starts with an empty
+-- data volume (mounted into /docker-entrypoint-initdb.d by docker-compose).
+-- To re-run manually: psql -U postgres -d employee_management -f schema.sql
 
-CREATE TABLE IF NOT EXISTS users (
+CREATE TABLE IF NOT EXISTS employees (
   id SERIAL PRIMARY KEY,
   name VARCHAR(120) NOT NULL,
   email VARCHAR(160) NOT NULL UNIQUE,
-  role VARCHAR(60) NOT NULL DEFAULT 'Member',
+  department VARCHAR(80) NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- A little seed data so the page isn't empty on first run
-INSERT INTO users (name, email, role) VALUES
-  ('Ava Thompson', 'ava.thompson@example.com', 'Admin'),
-  ('Liam Chen', 'liam.chen@example.com', 'Editor'),
-  ('Sofia Rossi', 'sofia.rossi@example.com', 'Member')
+INSERT INTO employees (name, email, department) VALUES
+  ('Ava Thompson',  'ava.thompson@example.com',  'Engineering'),
+  ('Liam Chen',     'liam.chen@example.com',     'Product'),
+  ('Sofia Rossi',   'sofia.rossi@example.com',   'Design'),
+  ('Noah Patel',    'noah.patel@example.com',    'Marketing'),
+  ('Maya Johnson',  'maya.johnson@example.com',  'Human Resources')
 ON CONFLICT (email) DO NOTHING;
