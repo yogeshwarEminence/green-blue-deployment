@@ -1,4 +1,4 @@
-# ---- Stage 1: build the static React app ----
+# ---- Stage 1: Build the React app with Vite ----
 FROM node:20-alpine AS build
 
 WORKDIR /app
@@ -8,12 +8,16 @@ RUN npm install
 
 COPY . .
 
-# No VITE_API_URL is passed here on purpose, so the app falls back to
-# the relative "/api" path at build time. See src/api.js and nginx.conf.
+# VITE_API_URL is a BUILD-TIME argument. Vite bundles this value directly
+# into the compiled JavaScript, so it must be provided at `docker build`
+# time (see docker-compose.yml "build.args"), not at container runtime.
+ARG VITE_API_URL
+ENV VITE_API_URL=$VITE_API_URL
+
 RUN npm run build
 
-# ---- Stage 2: serve the build with nginx ----
-FROM nginx:alpine
+# ---- Stage 2: Serve the built static files with nginx ----
+FROM nginx:1.27-alpine
 
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf

@@ -1,9 +1,54 @@
-// - Local dev (`npm run dev`): VITE_API_URL comes from client/.env.development
-//   and points straight at the backend on http://localhost:4000/api.
-// - Docker: no VITE_API_URL is set at build time, so this falls back to the
-//   relative path "/api". nginx (see client/nginx.conf) receives that request
-//   on port 80 and forwards it to the "backend" container. The browser never
-//   needs to know the backend's Docker service name — only nginx does.
-const API_URL = import.meta.env.VITE_API_URL || '/api';
+// VITE_API_URL is baked into the built JavaScript at BUILD TIME
+// (that's how Vite/browser apps work - there is no server-side "process.env"
+// available once the code is running in the user's browser).
+//
+// Because this code runs in the browser (not inside the Docker network),
+// it must use an address the browser's machine can actually reach, i.e.
+// http://localhost:4000 (the backend port published on the host).
+// A Docker service name like "http://backend:4000" would NOT resolve
+// from the browser - Docker's internal DNS only works between containers.
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
-export default API_URL;
+async function handleResponse(res) {
+  if (!res.ok) {
+    let message = `Request failed with status ${res.status}`;
+    try {
+      const body = await res.json();
+      if (body.error) message = body.error;
+    } catch {
+      // response had no JSON body - ignore
+    }
+    throw new Error(message);
+  }
+  return res.json();
+}
+
+export async function getEmployees() {
+  const res = await fetch(`${API_URL}/api/employees`);
+  return handleResponse(res);
+}
+
+export async function createEmployee(employee) {
+  const res = await fetch(`${API_URL}/api/employees`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(employee),
+  });
+  return handleResponse(res);
+}
+
+export async function updateEmployee(id, employee) {
+  const res = await fetch(`${API_URL}/api/employees/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(employee),
+  });
+  return handleResponse(res);
+}
+
+export async function deleteEmployee(id) {
+  const res = await fetch(`${API_URL}/api/employees/${id}`, {
+    method: 'DELETE',
+  });
+  return handleResponse(res);
+}
