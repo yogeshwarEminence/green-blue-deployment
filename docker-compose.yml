@@ -6,64 +6,94 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: employee_db
     ports:
-      # Exposed to the host too, purely so you can connect with a DB client
-      # (psql, DBeaver, etc.) while learning. Not required by the app itself.
       - "5432:5432"
     volumes:
-      # Named volume: PostgreSQL's actual data files persist here across
-      # `docker compose down` / container recreation.
       - pgdata:/var/lib/postgresql/data
-      # Bind mount: runs once, only when the volume above is empty,
-      # to create the table and insert the seed rows.
-      - ./db/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./docker/postgres/02-blue-schema.sql:/docker-entrypoint-initdb.d/02-blue-schema.sql:ro
+      - ./docker/postgres/03-green-schema.sql:/docker-entrypoint-initdb.d/03-green-schema.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d employee_db"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U postgres"
+        ]
       interval: 5s
       timeout: 5s
       retries: 10
     networks:
       - app-network
 
-  backend:
+  backend-blue:
     build:
       context: ./server
       dockerfile: Dockerfile
-    container_name: employee-backend
+    container_name: employee-backend-blue
     restart: unless-stopped
     environment:
-      PORT: 4000
-      DB_HOST: postgres      # <-- Docker service name, NOT localhost
+      PORT: 4001
+      DB_HOST: postgres
       DB_PORT: 5432
-      DB_USER: postgres
-      DB_PASSWORD: postgres
-      DB_NAME: employee_db
+      DB_USER: blue_user
+      DB_PASSWORD: blue_password
+      DB_NAME: threetierapp_blue
     ports:
-      # Published to the host so the browser (running outside Docker)
-      # can reach the API directly at http://localhost:4000.
-      - "4000:4000"
+      - "4001:4001"
     depends_on:
       postgres:
         condition: service_healthy
     networks:
       - app-network
 
-  frontend:
+  frontend-blue:
     build:
       context: ./client
       dockerfile: Dockerfile
       args:
-        # Baked into the JS bundle at BUILD time. Must be an address the
-        # BROWSER can reach - the browser is not part of the Docker
-        # network, so "http://backend:4000" would not resolve for it.
-        VITE_API_URL: http://localhost:4000
-    container_name: employee-frontend
+        VITE_API_URL: http://localhost:4001
+    container_name: employee-frontend-blue
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "3001:80"
     depends_on:
-      - backend
+      - backend-blue
+    networks:
+      - app-network
+
+  backend-green:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: employee-backend-green
+    restart: unless-stopped
+    environment:
+      PORT: 4002
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: green_user
+      DB_PASSWORD: green_password
+      DB_NAME: threetierapp_green
+    ports:
+      - "4002:4002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  frontend-green:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: http://localhost:4002
+    container_name: employee-frontend-green
+    restart: unless-stopped
+    ports:
+      - "3002:80"
+    depends_on:
+      - backend-green
     networks:
       - app-network
 
