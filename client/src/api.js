@@ -7,7 +7,7 @@
 // http://localhost:4000 (the backend port published on the host).
 // A Docker service name like "http://backend:4000" would NOT resolve
 // from the browser - Docker's internal DNS only works between containers.
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+const API_URL = '';
 
 async function handleResponse(res) {
   if (!res.ok) {
