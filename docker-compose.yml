@@ -51,7 +51,7 @@ services:
       context: ./client
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: http://localhost:4001
+        VITE_API_URL: http://13.234.232.171:4001
     container_name: employee-frontend-blue
     restart: unless-stopped
     ports:
@@ -87,7 +87,7 @@ services:
       context: ./client
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: http://localhost:4002
+        VITE_API_URL: http://13.234.232.171:4002
     container_name: employee-frontend-green
     restart: unless-stopped
     ports:
