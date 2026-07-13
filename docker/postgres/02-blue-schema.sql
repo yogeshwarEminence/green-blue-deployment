@@ -8,11 +8,11 @@ CREATE TABLE IF NOT EXISTS employees (
 );
 
 INSERT INTO employees (name, email, department) VALUES
-('Alice Johnson','alice.johnson@example.com','Engineering'),
-('Bob Smith','bob.smith@example.com','Marketing'),
-('Carla Diaz','carla.diaz@example.com','Human Resources'),
-('David Lee','david.lee@example.com','Finance'),
-('Emma Brown','emma.brown@example.com','Engineering')
+('Tony Stark', 'tony.stark@starkindustries.com', 'Engineering'),
+('Clark Kent', 'clark.kent@dailyplanet.com', 'Marketing'),
+('Peter Parker', 'peter.parker@dailybugle.net', 'Human Resources'),
+('Bruce Wayne', 'bruce.wayne@wayneenterprises.com', 'Finance'),
+('Loki', 'loki@asgard.gov', 'Engineering');
 ON CONFLICT (email) DO NOTHING;
 
 ALTER TABLE employees OWNER TO blue_user;
