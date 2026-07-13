@@ -12,7 +12,7 @@ INSERT INTO employees (name, email, department) VALUES
 ('Thomas Shelby', 'thomas.shelby@shelbycompanylimited.com', 'Marketing'),
 ('Jon Snow', 'jon.snow@nightswatch.org', 'Human Resources'),
 ('Jonas Kahnwald', 'jonas.kahnwald@windennuclear.de', 'Finance'),
-('Maeve Wiley', 'maeve.wiley@moordalehigh.edu', 'Engineering');
+('Maeve Wiley', 'maeve.wiley@moordalehigh.edu', 'Engineering'),
 ON CONFLICT (email) DO NOTHING;
 
 ALTER TABLE employees OWNER TO green_user;
