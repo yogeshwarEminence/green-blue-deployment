@@ -10,25 +10,12 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
-      - ./docker/postgres/02-blue-schema.sql:/docker-entrypoint-initdb.d/02-blue-schema.sql:ro
-      - ./docker/postgres/03-green-schema.sql:/docker-entrypoint-initdb.d/03-green-schema.sql:ro
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "pg_isready -U postgres"
-        ]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-    networks:
-      - app-network
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./docker/postgres/02-blue-schema.sql:/docker-entrypoint-initdb.d/02-blue-schema.sql
+      - ./docker/postgres/03-green-schema.sql:/docker-entrypoint-initdb.d/03-green-schema.sql
 
   backend-blue:
-    build:
-      context: ./server
-      dockerfile: Dockerfile
+    build: ./server
     container_name: employee-backend-blue
     restart: unless-stopped
     environment:
@@ -41,32 +28,21 @@ services:
     ports:
       - "4001:4001"
     depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - app-network
+      - postgres
 
   frontend-blue:
-    build:
-      context: ./client
-      dockerfile: Dockerfile
-      args:
-        VITE_API_URL: http://13.234.232.171:4001
+    build: ./client
     container_name: employee-frontend-blue
     restart: unless-stopped
     ports:
       - "3001:80"
+    volumes:
+      - ./client/nginx/blue.conf:/etc/nginx/conf.d/default.conf
     depends_on:
       - backend-blue
-    networks:
-      - app-network
-    volumes:
-    - ./client/nginx/blue.conf:/etc/nginx/conf.d/default.conf:ro
 
   backend-green:
-    build:
-      context: ./server
-      dockerfile: Dockerfile
+    build: ./server
     container_name: employee-backend-green
     restart: unless-stopped
     environment:
@@ -79,31 +55,18 @@ services:
     ports:
       - "4002:4002"
     depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - app-network
+      - postgres
 
   frontend-green:
-    build:
-      context: ./client
-      dockerfile: Dockerfile
-      args:
-        VITE_API_URL: http://13.234.232.171:4002
+    build: ./client
     container_name: employee-frontend-green
     restart: unless-stopped
     ports:
       - "3002:80"
+    volumes:
+      - ./client/nginx/green.conf:/etc/nginx/conf.d/default.conf
     depends_on:
       - backend-green
-    networks:
-      - app-network
-    volumes:
-    - ./client/nginx/green.conf:/etc/nginx/conf.d/default.conf:ro
-
-networks:
-  app-network:
-    driver: bridge
 
 volumes:
   pgdata:
