@@ -12,6 +12,4 @@ COPY src ./src
 
 ENV NODE_ENV=production
 
-EXPOSE 4000
-
 CMD ["npm", "start"]
